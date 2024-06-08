@@ -5,11 +5,13 @@ use std::{
     process,
 };
 
-struct Lox {}
+struct Lox {
+    had_error: bool,
+}
 
 impl Lox {
     fn new() -> Self {
-        Lox {}
+        Lox { had_error: false }
     }
 
     fn main(&self, args: Vec<String>) -> std::io::Result<()> {
@@ -25,11 +27,6 @@ impl Lox {
         }
 
         Ok(())
-    }
-
-    fn run(&self, source: String) {
-        print!("{source}");
-        // TODO: Scan to tokens
     }
 
     fn run_file(&self, filename: &String) -> std::io::Result<()> {
@@ -66,6 +63,20 @@ impl Lox {
 
             self.run(line)
         }
+    }
+
+    fn run(&self, source: String) {
+        print!("{source}");
+        // TODO: Scan to tokens
+    }
+
+    fn error(&mut self, line: i32, message: &str) {
+        self.report(line, "", message);
+    }
+
+    fn report(&mut self, line: i32, position: &str, message: &str) {
+        eprintln!("[line {line}] Error{position}: {message}");
+        self.had_error = false;
     }
 }
 
