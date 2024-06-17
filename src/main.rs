@@ -5,6 +5,9 @@ use std::{
     process,
 };
 
+mod token;
+mod token_type;
+
 struct Lox {
     had_error: bool,
 }
@@ -35,6 +38,7 @@ impl Lox {
         file.read_to_string(&mut source)?;
         self.run(source);
 
+        // TODO: exit with code 64 if had_error
         Ok(())
     }
 
@@ -62,6 +66,7 @@ impl Lox {
             }
 
             self.run(line)
+            // TODO: reset had_error to false
         }
     }
 
