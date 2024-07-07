@@ -45,10 +45,47 @@ impl<'a> Scanner<'a> {
         }
     }
 
+    fn peek_next(&self) -> char {
+        if self.current + 1 >= self.source.chars().count() {
+            '\0'
+        } else {
+            self.source.chars().nth(self.current + 1).unwrap()
+        }
+    }
+
     fn add_token(&mut self, token_type: TokenType) {
         let lexeme = self.source[self.start..self.current].to_string();
         self.tokens
             .push(Token::new(token_type, lexeme, String::new(), self.line))
+    }
+
+    fn string(&mut self) {
+        while self.peek() != '"' && !self.is_at_end() {
+            if self.peek() == '\n' {
+                self.line += 1;
+            }
+            self.advance();
+        }
+        if self.is_at_end() {
+            self.lox.error(self.line, "Unterminated string.");
+            return;
+        }
+        self.advance();
+        // TODO: literal for string
+        self.add_token(TokenType::String);
+    }
+
+    fn number(&mut self) {
+        while self.peek().is_digit(10) {
+            self.advance();
+        }
+        if self.peek() == '.' && self.peek_next().is_digit(10) {
+            self.advance();
+            while self.peek().is_digit(10) {
+                self.advance();
+            }
+        }
+        self.add_token(TokenType::Number);
     }
 
     fn scan_token(&mut self) {
@@ -98,16 +135,22 @@ impl<'a> Scanner<'a> {
                     self.add_token(TokenType::Less);
                 }
             }
-
             '/' => {
                 if self.peek() == '/' {
-                    while !self.is_at_end() && self.advance() != '\n' {}
+                    while !self.is_at_end() && self.peek() != '\n' {
+                        self.advance();
+                    }
                 } else {
                     self.add_token(TokenType::Slash);
                 }
             }
 
-            _ => (),
+            ' ' | '\r' | 't' => (),
+            '\n' => self.line += 1,
+            '"' => self.string(),
+
+            _ if c.is_digit(10) => self.number(),
+            _ => self.lox.error(self.line, "Unexpected character."),
         }
     }
 

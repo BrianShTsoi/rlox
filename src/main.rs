@@ -83,11 +83,11 @@ impl Lox {
         }
     }
 
-    fn error(&mut self, line: i32, message: &str) {
+    fn error(&mut self, line: usize, message: &str) {
         self.report(line, "", message);
     }
 
-    fn report(&mut self, line: i32, position: &str, message: &str) {
+    fn report(&mut self, line: usize, position: &str, message: &str) {
         eprintln!("[line {line}] Error{position}: {message}");
         self.had_error = false;
     }
