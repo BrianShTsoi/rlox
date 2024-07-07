@@ -49,19 +49,18 @@ impl Lox {
         let stdin = io::stdin();
 
         loop {
-            stdout.write(b"> ")?;
+            stdout.write_all(b"> ")?;
             stdout.flush()?;
 
             let mut line = String::new();
 
-            let n: usize;
-            match stdin.read_line(&mut line) {
-                Ok(bytes_read) => n = bytes_read,
+            let n = match stdin.read_line(&mut line) {
+                Ok(bytes_read) => bytes_read,
                 Err(error) => {
                     println!("{error}");
                     return Err(error);
                 }
-            }
+            };
 
             if n == 0 {
                 return Ok(());

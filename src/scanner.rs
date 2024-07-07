@@ -30,8 +30,10 @@ impl<'a> Scanner<'a> {
         self.current >= self.source.chars().count()
     }
 
+    // TODO: rewrite advance & peek with options to eliminate use of is_at_end & '\0'
+    /// Should only be called after checking is_at_end() is false
+    /// Panics if current >= chars().len()
     fn advance(&mut self) -> char {
-        // TODO: Currently panics if current > chars().len()
         let c = self.source.chars().nth(self.current).unwrap();
         self.current += 1;
         c
@@ -45,6 +47,15 @@ impl<'a> Scanner<'a> {
         }
     }
 
+    fn match_next_char(&mut self, expected: char) -> bool {
+        if self.peek() != expected {
+            false
+        } else {
+            self.current += 1;
+            true
+        }
+    }
+
     fn peek_next(&self) -> char {
         if self.current + 1 >= self.source.chars().count() {
             '\0'
@@ -55,8 +66,7 @@ impl<'a> Scanner<'a> {
 
     fn add_token(&mut self, token_type: TokenType) {
         let lexeme = self.source[self.start..self.current].to_string();
-        self.tokens
-            .push(Token::new(token_type, lexeme, String::new(), self.line))
+        self.tokens.push(Token::new(token_type, lexeme, self.line))
     }
 
     fn string(&mut self) {
@@ -71,21 +81,25 @@ impl<'a> Scanner<'a> {
             return;
         }
         self.advance();
-        // TODO: literal for string
-        self.add_token(TokenType::String);
+        self.add_token(TokenType::String(
+            self.source[self.start + 1..self.current - 1].to_string(),
+        ));
     }
 
     fn number(&mut self) {
-        while self.peek().is_digit(10) {
+        while self.peek().is_ascii_digit() {
             self.advance();
         }
-        if self.peek() == '.' && self.peek_next().is_digit(10) {
+        if self.peek() == '.' && self.peek_next().is_ascii_digit() {
             self.advance();
-            while self.peek().is_digit(10) {
+            while self.peek().is_ascii_digit() {
                 self.advance();
             }
         }
-        self.add_token(TokenType::Number);
+        let literal = self.source[self.start..self.current]
+            .parse()
+            .expect("Lexeme was checked, should be valid float");
+        self.add_token(TokenType::Number(literal));
     }
 
     fn scan_token(&mut self) {
@@ -102,54 +116,27 @@ impl<'a> Scanner<'a> {
             '+' => self.add_token(TokenType::Plus),
             ';' => self.add_token(TokenType::Semicolon),
             '*' => self.add_token(TokenType::Star),
-            // TODO: make a match function instead of using peek
-            '!' => {
-                if self.peek() == '=' {
-                    self.current += 1;
-                    self.add_token(TokenType::BangEqual);
-                } else {
-                    self.add_token(TokenType::Bang);
+
+            '!' if self.match_next_char('=') => self.add_token(TokenType::BangEqual),
+            '!' => self.add_token(TokenType::Bang),
+            '=' if self.match_next_char('=') => self.add_token(TokenType::EqualEqual),
+            '=' => self.add_token(TokenType::Equal),
+            '>' if self.match_next_char('=') => self.add_token(TokenType::GreaterEqual),
+            '>' => self.add_token(TokenType::Greater),
+            '<' if self.match_next_char('=') => self.add_token(TokenType::LessEqual),
+            '<' => self.add_token(TokenType::Less),
+            '/' if self.match_next_char('/') => {
+                while !self.is_at_end() && self.peek() != '\n' {
+                    self.advance();
                 }
             }
-            '=' => {
-                if self.peek() == '=' {
-                    self.current += 1;
-                    self.add_token(TokenType::EqualEqual);
-                } else {
-                    self.add_token(TokenType::Equal);
-                }
-            }
-            '>' => {
-                if self.peek() == '=' {
-                    self.current += 1;
-                    self.add_token(TokenType::GreaterEqual);
-                } else {
-                    self.add_token(TokenType::Greater);
-                }
-            }
-            '<' => {
-                if self.peek() == '=' {
-                    self.current += 1;
-                    self.add_token(TokenType::LessEqual);
-                } else {
-                    self.add_token(TokenType::Less);
-                }
-            }
-            '/' => {
-                if self.peek() == '/' {
-                    while !self.is_at_end() && self.peek() != '\n' {
-                        self.advance();
-                    }
-                } else {
-                    self.add_token(TokenType::Slash);
-                }
-            }
+            '/' => self.add_token(TokenType::Slash),
 
             ' ' | '\r' | 't' => (),
             '\n' => self.line += 1,
             '"' => self.string(),
 
-            _ if c.is_digit(10) => self.number(),
+            _ if c.is_ascii_digit() => self.number(),
             _ => self.lox.error(self.line, "Unexpected character."),
         }
     }
@@ -162,7 +149,6 @@ impl<'a> Scanner<'a> {
 
         self.tokens.push(Token::new(
             crate::token_type::TokenType::Eof,
-            String::new(),
             String::new(),
             self.line,
         ));
