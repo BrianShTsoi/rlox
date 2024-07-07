@@ -93,6 +93,32 @@ impl<'a> Scanner<'a> {
         self.add_token(TokenType::Number(literal));
     }
 
+    fn identifier(&mut self) {
+        while self.peek().is_some_and(|c| c.is_ascii_alphanumeric()) {
+            self.advance();
+        }
+        let token_type = match &self.source[self.start..self.current] {
+            "and" => TokenType::And,
+            "class" => TokenType::Class,
+            "else" => TokenType::Else,
+            "false" => TokenType::False,
+            "fun" => TokenType::Fun,
+            "for" => TokenType::For,
+            "if" => TokenType::If,
+            "nil" => TokenType::Nil,
+            "or" => TokenType::Or,
+            "print" => TokenType::Print,
+            "return" => TokenType::Return,
+            "super" => TokenType::Super,
+            "this" => TokenType::This,
+            "true" => TokenType::True,
+            "var" => TokenType::Var,
+            "while" => TokenType::While,
+            _ => TokenType::Identifier,
+        };
+        self.add_token(token_type);
+    }
+
     fn scan_token(&mut self) -> Result<(), &str> {
         let Some(c) = self.advance() else {
             return Err("End of source");
@@ -130,6 +156,7 @@ impl<'a> Scanner<'a> {
             '"' => self.string(),
 
             _ if c.is_ascii_digit() => self.number(),
+            _ if c.is_ascii_alphabetic() => self.identifier(),
             _ => self.lox.error(self.line, "Unexpected character."),
         };
         Ok(())
