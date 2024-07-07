@@ -26,42 +26,29 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn is_at_end(&self) -> bool {
-        self.current >= self.source.chars().count()
-    }
-
-    // TODO: rewrite advance & peek with options to eliminate use of is_at_end & '\0'
-    /// Should only be called after checking is_at_end() is false
-    /// Panics if current >= chars().len()
-    fn advance(&mut self) -> char {
-        let c = self.source.chars().nth(self.current).unwrap();
-        self.current += 1;
+    fn advance(&mut self) -> Option<char> {
+        let c = self.peek();
+        if c.is_some() {
+            self.current += 1;
+        }
         c
     }
 
-    fn peek(&self) -> char {
-        if self.is_at_end() {
-            '\0'
-        } else {
-            self.source.chars().nth(self.current).unwrap()
-        }
+    fn peek(&self) -> Option<char> {
+        self.source[self.current..].chars().next()
     }
 
     fn match_next_char(&mut self, expected: char) -> bool {
-        if self.peek() != expected {
-            false
-        } else {
+        if self.peek().is_some_and(|c| c == expected) {
             self.current += 1;
             true
+        } else {
+            false
         }
     }
 
-    fn peek_next(&self) -> char {
-        if self.current + 1 >= self.source.chars().count() {
-            '\0'
-        } else {
-            self.source.chars().nth(self.current + 1).unwrap()
-        }
+    fn peek_next(&self) -> Option<char> {
+        self.source[self.current + 1..].chars().next()
     }
 
     fn add_token(&mut self, token_type: TokenType) {
@@ -70,29 +57,33 @@ impl<'a> Scanner<'a> {
     }
 
     fn string(&mut self) {
-        while self.peek() != '"' && !self.is_at_end() {
-            if self.peek() == '\n' {
-                self.line += 1;
+        loop {
+            match self.advance() {
+                Some('"') => {
+                    self.add_token(TokenType::String(
+                        self.source[self.start + 1..self.current - 1].to_string(),
+                    ));
+                    return;
+                }
+                Some('\n') => self.line += 1,
+                Some(_) => (),
+                None => {
+                    self.lox.error(self.line, "Unterminated string.");
+                    return;
+                }
             }
-            self.advance();
         }
-        if self.is_at_end() {
-            self.lox.error(self.line, "Unterminated string.");
-            return;
-        }
-        self.advance();
-        self.add_token(TokenType::String(
-            self.source[self.start + 1..self.current - 1].to_string(),
-        ));
     }
 
     fn number(&mut self) {
-        while self.peek().is_ascii_digit() {
+        while self.peek().is_some_and(|c| c.is_ascii_digit()) {
             self.advance();
         }
-        if self.peek() == '.' && self.peek_next().is_ascii_digit() {
+        if self.peek().is_some_and(|c| c == '.')
+            && self.peek_next().is_some_and(|c| c.is_ascii_digit())
+        {
             self.advance();
-            while self.peek().is_ascii_digit() {
+            while self.peek().is_some_and(|c| c.is_ascii_digit()) {
                 self.advance();
             }
         }
@@ -102,8 +93,10 @@ impl<'a> Scanner<'a> {
         self.add_token(TokenType::Number(literal));
     }
 
-    fn scan_token(&mut self) {
-        let c = self.advance();
+    fn scan_token(&mut self) -> Result<(), &str> {
+        let Some(c) = self.advance() else {
+            return Err("End of source");
+        };
 
         match c {
             '(' => self.add_token(TokenType::LeftParen),
@@ -126,7 +119,7 @@ impl<'a> Scanner<'a> {
             '<' if self.match_next_char('=') => self.add_token(TokenType::LessEqual),
             '<' => self.add_token(TokenType::Less),
             '/' if self.match_next_char('/') => {
-                while !self.is_at_end() && self.peek() != '\n' {
+                while self.peek().is_some_and(|c| c != '\n') {
                     self.advance();
                 }
             }
@@ -138,13 +131,13 @@ impl<'a> Scanner<'a> {
 
             _ if c.is_ascii_digit() => self.number(),
             _ => self.lox.error(self.line, "Unexpected character."),
-        }
+        };
+        Ok(())
     }
 
     pub fn scan_tokens(&mut self) -> Vec<Token> {
-        while !self.is_at_end() {
+        while self.scan_token().is_ok() {
             self.start = self.current;
-            self.scan_token();
         }
 
         self.tokens.push(Token::new(
