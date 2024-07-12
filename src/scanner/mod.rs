@@ -1,8 +1,11 @@
 use std::char;
 
-use crate::token::Token;
-use crate::token_type::TokenType;
+mod token;
+mod token_type;
+
 use crate::Lox;
+use token::Token;
+use token_type::TokenType;
 
 pub struct Scanner<'a> {
     lox: &'a mut Lox,
@@ -167,11 +170,8 @@ impl<'a> Scanner<'a> {
             self.start = self.current;
         }
 
-        self.tokens.push(Token::new(
-            crate::token_type::TokenType::Eof,
-            String::new(),
-            self.line,
-        ));
+        self.tokens
+            .push(Token::new(TokenType::Eof, String::new(), self.line));
         self.tokens.clone()
     }
 }

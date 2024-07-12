@@ -6,8 +6,6 @@ use std::{
 };
 
 mod scanner;
-mod token;
-mod token_type;
 
 struct Lox {
     // TODO: can implement an error emitter?
