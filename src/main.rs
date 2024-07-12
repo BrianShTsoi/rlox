@@ -5,7 +5,8 @@ use std::{
     process,
 };
 
-mod scanner;
+pub mod ast;
+pub mod scanner;
 
 struct Lox {
     // TODO: can implement an error emitter?
