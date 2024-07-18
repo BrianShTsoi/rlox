@@ -22,6 +22,7 @@ impl<'a> Scanner<'a> {
         Scanner {
             lox,
             source,
+
             tokens: Vec::new(),
             start: 0,
             current: 0,
@@ -154,7 +155,7 @@ impl<'a> Scanner<'a> {
             }
             '/' => self.add_token(TokenType::Slash),
 
-            ' ' | '\r' | 't' => (),
+            ' ' | '\r' | '\t' => (),
             '\n' => self.line += 1,
             '"' => self.string(),
 

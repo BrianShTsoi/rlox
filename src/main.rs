@@ -5,10 +5,15 @@ use std::{
     process,
 };
 
+use scanner::{token::Token, token_type::TokenType};
+
+use crate::parser::Parser;
+
 pub mod ast;
+pub mod parser;
 pub mod scanner;
 
-struct Lox {
+pub struct Lox {
     // TODO: can implement an error emitter?
     had_error: bool,
 }
@@ -72,17 +77,33 @@ impl Lox {
 
     fn run(&mut self, source: String) {
         // println!("{source}");
-        println!("LOG: SCANNED");
         let mut scanner = scanner::Scanner::new(self, source);
         let tokens = scanner.scan_tokens();
 
-        for t in tokens {
-            println!("{t}");
+        println!("LOG: SCANNED");
+        for t in &tokens {
+            println!("{:?}", t);
+        }
+
+        let mut parser = Parser::new(self, tokens);
+        let expr = parser.parse().ok();
+        if let Some(e) = expr {
+            println!("{}", e);
+        } else {
+            println!("Parsing went wrong!");
         }
     }
 
     fn error(&mut self, line: usize, message: &str) {
         self.report(line, "", message);
+    }
+
+    fn error_with_token(&mut self, token: Token, message: &str) {
+        let position = match token.token_type() {
+            TokenType::Eof => " at end".to_string(),
+            _ => format!(" at '{}'", token.lexeme()),
+        };
+        self.report(token.line(), &position, message);
     }
 
     fn report(&mut self, line: usize, position: &str, message: &str) {
@@ -92,8 +113,33 @@ impl Lox {
 }
 
 fn main() -> std::io::Result<()> {
+    // use crate::ast::Expr;
+    // use scanner::token::Token;
+    // use scanner::token_type::TokenType;
+
     let args = env::args().collect::<Vec<_>>();
     let mut lox = Lox::new();
     lox.main(args)?;
+
+    // Test printing of Expr
+    // let ast = ast::Expr::Binary {
+    //     left: Box::new(Expr::Literal {
+    //         value: Token::new(
+    //             TokenType::String(String::from("Hello")),
+    //             String::from("Hello"),
+    //             1,
+    //         ),
+    //     }),
+    //     operator: Token::new(TokenType::EqualEqual, String::from("=="), 1),
+    //     right: Box::new(Expr::Literal {
+    //         value: Token::new(
+    //             TokenType::String(String::from("World")),
+    //             String::from("World"),
+    //             1,
+    //         ),
+    //     }),
+    // };
+    // println!("{}", ast);
+
     Ok(())
 }
