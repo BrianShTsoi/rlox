@@ -28,16 +28,20 @@ impl fmt::Display for Expr {
                 operator,
                 right,
             } => {
-                write!(f, "({} {} {})", left, operator, right)
+                write!(
+                    f,
+                    "\x1b[31m(\x1b[0m{} {} {}\x1b[31m)\x1b[0m",
+                    left, operator, right
+                )
             }
             Self::Grouping { expression } => {
-                write!(f, "({})", expression)
+                write!(f, "\x1b[32m(\x1b[0m{}\x1b[32m)\x1b[0m", expression)
             }
             Self::Literal { value } => {
-                write!(f, "({})", value)
+                write!(f, "\x1b[34m(\x1b[0m{}\x1b[34m)\x1b[0m", value)
             }
             Self::Unary { operator, right } => {
-                write!(f, "({} ({}))", operator, right)
+                write!(f, "\x1b[36m(\x1b[0m{} {}\x1b[36m)\x1b[0m", operator, right)
             }
         }
     }

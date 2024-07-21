@@ -113,33 +113,8 @@ impl Lox {
 }
 
 fn main() -> std::io::Result<()> {
-    // use crate::ast::Expr;
-    // use scanner::token::Token;
-    // use scanner::token_type::TokenType;
-
     let args = env::args().collect::<Vec<_>>();
     let mut lox = Lox::new();
     lox.main(args)?;
-
-    // Test printing of Expr
-    // let ast = ast::Expr::Binary {
-    //     left: Box::new(Expr::Literal {
-    //         value: Token::new(
-    //             TokenType::String(String::from("Hello")),
-    //             String::from("Hello"),
-    //             1,
-    //         ),
-    //     }),
-    //     operator: Token::new(TokenType::EqualEqual, String::from("=="), 1),
-    //     right: Box::new(Expr::Literal {
-    //         value: Token::new(
-    //             TokenType::String(String::from("World")),
-    //             String::from("World"),
-    //             1,
-    //         ),
-    //     }),
-    // };
-    // println!("{}", ast);
-
     Ok(())
 }
