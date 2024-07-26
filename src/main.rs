@@ -5,22 +5,28 @@ use std::{
     process,
 };
 
+use interpreter::RuntimeError;
 use scanner::{token::Token, token_type::TokenType};
 
-use crate::parser::Parser;
+use crate::{interpreter::Interpreter, parser::Parser};
 
 pub mod ast;
+pub mod interpreter;
 pub mod parser;
 pub mod scanner;
 
 pub struct Lox {
     // TODO: can implement an error emitter?
     had_error: bool,
+    had_runtime_error: bool,
 }
 
 impl Lox {
     fn new() -> Self {
-        Lox { had_error: false }
+        Lox {
+            had_error: false,
+            had_runtime_error: false,
+        }
     }
 
     fn main(&mut self, args: Vec<String>) -> std::io::Result<()> {
@@ -45,6 +51,7 @@ impl Lox {
         self.run(source);
 
         // TODO: exit with code 64 if had_error
+        // TODO: exit with code 70 if had_runtime_error
         Ok(())
     }
 
@@ -80,7 +87,7 @@ impl Lox {
         let mut scanner = scanner::Scanner::new(self, source);
         let tokens = scanner.scan_tokens();
 
-        println!("LOG: SCANNED");
+        println!("SCANNED");
         for t in &tokens {
             println!("{:?}", t);
         }
@@ -88,7 +95,9 @@ impl Lox {
         let mut parser = Parser::new(self, tokens);
         let expr = parser.parse().ok();
         if let Some(e) = expr {
-            println!("{}", e);
+            println!("PARSED: {}", e);
+            let mut interpreter = Interpreter::new(self);
+            interpreter.interpret(e);
         } else {
             println!("Parsing went wrong!");
         }
@@ -104,6 +113,11 @@ impl Lox {
             _ => format!(" at '{}'", token.lexeme()),
         };
         self.report(token.line(), &position, message);
+    }
+
+    fn runtime_error(&mut self, runtime_err: RuntimeError) {
+        eprintln!("{}", runtime_err.to_err_msg());
+        self.had_runtime_error = true;
     }
 
     fn report(&mut self, line: usize, position: &str, message: &str) {

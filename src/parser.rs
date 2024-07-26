@@ -101,7 +101,7 @@ impl<'a> Parser<'a> {
 
     fn term(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.factor()?;
-        if self.match_next_token_type(TokenType::Plus)
+        while self.match_next_token_type(TokenType::Plus)
             || self.match_next_token_type(TokenType::Minus)
         {
             let operator = self
@@ -177,7 +177,7 @@ impl<'a> Parser<'a> {
                 })
             } else {
                 let token = self.peek().expect("Should not be the end token").to_owned();
-                self.error(ParserError::ExpectParen(token))
+                self.error(ParserError::ExpectRightParen(token))
             }
         } else {
             let token = self.peek().expect("Should not be the end token").to_owned();
@@ -214,7 +214,7 @@ impl<'a> Parser<'a> {
             ParserError::ExpectExpression(t) => {
                 self.lox.error_with_token(t, "Expect expression");
             }
-            ParserError::ExpectParen(t) => {
+            ParserError::ExpectRightParen(t) => {
                 self.lox.error_with_token(t, "Expect ')' after expression");
             }
         }
@@ -225,5 +225,5 @@ impl<'a> Parser<'a> {
 #[derive(Clone)]
 pub enum ParserError {
     ExpectExpression(Token),
-    ExpectParen(Token),
+    ExpectRightParen(Token),
 }
