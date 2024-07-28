@@ -127,7 +127,7 @@ impl Expr {
     ) -> Result<LoxValue, RuntimeError> {
         match (left, right) {
             (LoxValue::Number(l), LoxValue::Number(r)) => Ok(LoxValue::Bool(l > r)),
-            _ => Err(RuntimeError::InvalidArithmeticOperand(operator.clone())),
+            _ => Err(RuntimeError::InvalidBinaryOperator(operator.clone())),
         }
     }
     fn greater_equal(
@@ -137,13 +137,13 @@ impl Expr {
     ) -> Result<LoxValue, RuntimeError> {
         match (left, right) {
             (LoxValue::Number(l), LoxValue::Number(r)) => Ok(LoxValue::Bool(l >= r)),
-            _ => Err(RuntimeError::InvalidArithmeticOperand(operator.clone())),
+            _ => Err(RuntimeError::InvalidBinaryOperator(operator.clone())),
         }
     }
     fn less(left: LoxValue, operator: &Token, right: LoxValue) -> Result<LoxValue, RuntimeError> {
         match (left, right) {
             (LoxValue::Number(l), LoxValue::Number(r)) => Ok(LoxValue::Bool(l < r)),
-            _ => Err(RuntimeError::InvalidArithmeticOperand(operator.clone())),
+            _ => Err(RuntimeError::InvalidBinaryOperator(operator.clone())),
         }
     }
     fn less_equal(
@@ -153,7 +153,7 @@ impl Expr {
     ) -> Result<LoxValue, RuntimeError> {
         match (left, right) {
             (LoxValue::Number(l), LoxValue::Number(r)) => Ok(LoxValue::Bool(l <= r)),
-            _ => Err(RuntimeError::InvalidArithmeticOperand(operator.clone())),
+            _ => Err(RuntimeError::InvalidBinaryOperator(operator.clone())),
         }
     }
 }

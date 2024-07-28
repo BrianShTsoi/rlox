@@ -99,7 +99,7 @@ impl Lox {
             let mut interpreter = Interpreter::new(self);
             interpreter.interpret(e);
         } else {
-            println!("Parsing went wrong!");
+            println!("Cannot show parsed result or interpret due to error");
         }
     }
 

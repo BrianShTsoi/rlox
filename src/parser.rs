@@ -26,27 +26,23 @@ impl<'a> Parser<'a> {
     fn synchronize(&mut self) {
         // TODO: modify later once this is actually used
         self.current += 1;
-        while self
-            .peek()
-            .is_some_and(|t| t.token_type() != TokenType::Eof)
-        {
-            if self
-                .previous()
-                .is_some_and(|t| t.token_type() == TokenType::Semicolon)
-            {
+        while self.peek().is_some() {
+            if matches!(self.previous().token_type(), TokenType::Semicolon) {
                 return;
             }
 
-            if self.peek().is_some_and(|t| match t.token_type() {
-                TokenType::Class
-                | TokenType::Fun
-                | TokenType::Var
-                | TokenType::For
-                | TokenType::If
-                | TokenType::While
-                | TokenType::Print
-                | TokenType::Return => true,
-                _ => false,
+            if self.peek().is_some_and(|t| {
+                matches!(
+                    t.token_type(),
+                    TokenType::Class
+                        | TokenType::Fun
+                        | TokenType::Var
+                        | TokenType::For
+                        | TokenType::If
+                        | TokenType::While
+                        | TokenType::Print
+                        | TokenType::Return
+                )
             }) {
                 return;
             }
@@ -61,13 +57,8 @@ impl<'a> Parser<'a> {
 
     fn equality(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.comparison()?;
-        while self.match_next_token_type(TokenType::EqualEqual)
-            || self.match_next_token_type(TokenType::BangEqual)
-        {
-            let operator = self
-                .previous()
-                .expect("Just matched next token, expect previous to exist")
-                .to_owned();
+        while self.match_next(TokenType::EqualEqual) || self.match_next(TokenType::BangEqual) {
+            let operator = self.previous().to_owned();
             let right = self.comparison()?;
             expr = Expr::Binary {
                 left: expr.into(),
@@ -80,15 +71,12 @@ impl<'a> Parser<'a> {
 
     fn comparison(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.term()?;
-        while self.match_next_token_type(TokenType::Greater)
-            || self.match_next_token_type(TokenType::GreaterEqual)
-            || self.match_next_token_type(TokenType::Less)
-            || self.match_next_token_type(TokenType::LessEqual)
+        while self.match_next(TokenType::Greater)
+            || self.match_next(TokenType::GreaterEqual)
+            || self.match_next(TokenType::Less)
+            || self.match_next(TokenType::LessEqual)
         {
-            let operator = self
-                .previous()
-                .expect("Just matched next token, expect previous to exist")
-                .to_owned();
+            let operator = self.previous().to_owned();
             let right = self.term()?;
             expr = Expr::Binary {
                 left: expr.into(),
@@ -101,13 +89,8 @@ impl<'a> Parser<'a> {
 
     fn term(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.factor()?;
-        while self.match_next_token_type(TokenType::Plus)
-            || self.match_next_token_type(TokenType::Minus)
-        {
-            let operator = self
-                .previous()
-                .expect("Just matched next token, expect previous to exist")
-                .to_owned();
+        while self.match_next(TokenType::Plus) || self.match_next(TokenType::Minus) {
+            let operator = self.previous().to_owned();
             let right = self.factor()?;
             expr = Expr::Binary {
                 left: expr.into(),
@@ -120,13 +103,8 @@ impl<'a> Parser<'a> {
 
     fn factor(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.unary()?;
-        while self.match_next_token_type(TokenType::Star)
-            || self.match_next_token_type(TokenType::Slash)
-        {
-            let operator = self
-                .previous()
-                .expect("Just matched next token, expect previous to exist")
-                .to_owned();
+        while self.match_next(TokenType::Star) || self.match_next(TokenType::Slash) {
+            let operator = self.previous().to_owned();
             let right = self.unary()?;
             expr = Expr::Binary {
                 left: expr.into(),
@@ -138,13 +116,8 @@ impl<'a> Parser<'a> {
     }
 
     fn unary(&mut self) -> Result<Expr, ParserError> {
-        if self.match_next_token_type(TokenType::Bang)
-            || self.match_next_token_type(TokenType::Minus)
-        {
-            let operator = self
-                .previous()
-                .expect("Just matched next token, expect previous to exist")
-                .to_owned();
+        if self.match_next(TokenType::Bang) || self.match_next(TokenType::Minus) {
+            let operator = self.previous().to_owned();
             let right = self.unary()?;
             let expr = Expr::Unary {
                 operator,
@@ -157,41 +130,37 @@ impl<'a> Parser<'a> {
     }
 
     fn primary(&mut self) -> Result<Expr, ParserError> {
-        if self.match_next_token_type(TokenType::String("".to_string()))
-            || self.match_next_token_type(TokenType::Number(0.0))
-            || self.match_next_token_type(TokenType::True)
-            || self.match_next_token_type(TokenType::False)
-            || self.match_next_token_type(TokenType::Nil)
+        if self.match_next(TokenType::String("".to_string()))
+            || self.match_next(TokenType::Number(0.0))
+            || self.match_next(TokenType::True)
+            || self.match_next(TokenType::False)
+            || self.match_next(TokenType::Nil)
         {
             Ok(Expr::Literal {
-                value: self
-                    .previous()
-                    .expect("Just matched next token, expect previous to exist")
-                    .to_owned(),
+                value: self.previous().to_owned(),
             })
-        } else if self.match_next_token_type(TokenType::LeftParen) {
+        } else if self.match_next(TokenType::LeftParen) {
             let expr = self.expression()?;
-            if self.match_next_token_type(TokenType::RightParen) {
+            if self.match_next(TokenType::RightParen) {
                 Ok(Expr::Grouping {
                     expression: expr.into(),
                 })
             } else {
-                let token = self.peek().expect("Should not be the end token").to_owned();
-                self.error(ParserError::ExpectRightParen(token))
+                self.error(ParserError::ExpectRightParen(self.previous().to_owned()))
             }
         } else {
-            let token = self.peek().expect("Should not be the end token").to_owned();
-            self.error(ParserError::ExpectExpression(token))
+            self.error(ParserError::ExpectExpression(self.previous().to_owned()))
         }
     }
 
-    fn match_next_token_type(&mut self, expected_type: TokenType) -> bool {
-        let matching_token_type = |t: &Token| match (t.token_type(), expected_type) {
+    fn match_next(&mut self, expected_type: TokenType) -> bool {
+        let matching = |t: &Token| match (t.token_type(), expected_type) {
             (TokenType::String(_), TokenType::String(_))
             | (TokenType::Number(_), TokenType::Number(_)) => true,
             (t1, t2) => t1 == t2,
         };
-        if self.peek().is_some_and(matching_token_type) {
+
+        if self.peek().is_some_and(matching) {
             self.current += 1;
             true
         } else {
@@ -199,14 +168,27 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn previous(&self) -> Option<&Token> {
-        // TODO: Edge case when current = 0
-        // Should be fine unless length of token vector is max usize
-        self.tokens.get(self.current - 1)
+    // Panics if `self.current` = 0
+    fn previous(&self) -> &Token {
+        self.tokens
+            .get(self.current - 1)
+            .expect("Previous should exist")
     }
 
+    /// Returns None if `self.current` is pointing at `TokenType::Eof`
+    /// Panics if `self.current` is pointing past the end of `self.tokens`
     fn peek(&self) -> Option<&Token> {
-        self.tokens.get(self.current)
+        // This is awkward as TokenType::Eof is actually unnecessary
+        // but is included to follow the book
+        let token = self
+            .tokens
+            .get(self.current)
+            .expect("self.current should never get past last token (TokenType::Eof)");
+        if matches!(token.token_type(), TokenType::Eof) {
+            None
+        } else {
+            Some(token)
+        }
     }
 
     fn error(&mut self, err: ParserError) -> Result<Expr, ParserError> {
