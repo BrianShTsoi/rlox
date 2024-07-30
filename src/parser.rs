@@ -146,10 +146,10 @@ impl<'a> Parser<'a> {
                     expression: expr.into(),
                 })
             } else {
-                self.error(ParserError::ExpectRightParen(self.previous().to_owned()))
+                self.error(ParserError::ExpectRightParen(self.current().to_owned()))
             }
         } else {
-            self.error(ParserError::ExpectExpression(self.previous().to_owned()))
+            self.error(ParserError::ExpectExpression(self.current().to_owned()))
         }
     }
 
@@ -168,11 +168,17 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // Panics if `self.current` = 0
+    // Panics if `self.current` = 0 as it is usize
     fn previous(&self) -> &Token {
         self.tokens
             .get(self.current - 1)
-            .expect("Previous should exist")
+            .expect("previous should exist")
+    }
+
+    /// Can return a reference to `TokenType::Eof`
+    /// Panics if `self.current` is pointing past the end of `self.tokens`
+    fn current(&self) -> &Token {
+        self.tokens.get(self.current).expect("current should exist")
     }
 
     /// Returns None if `self.current` is pointing at `TokenType::Eof`

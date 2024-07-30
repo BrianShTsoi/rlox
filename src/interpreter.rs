@@ -55,7 +55,7 @@ impl Expr {
             TokenType::GreaterEqual => Self::greater_equal(left, operator, right),
             TokenType::Less => Self::less(left, operator, right),
             TokenType::LessEqual => Self::less_equal(left, operator, right),
-            _ => Err(RuntimeError::InvalidBinaryOperator(operator.clone())),
+            _ => Err(RuntimeError::InvalidBinaryOperand(operator.clone())),
         }
     }
 
@@ -81,7 +81,7 @@ impl Expr {
                     Err(RuntimeError::InvalidUnaryOperand(operator.clone()))
                 }
             }
-            _ => Err(RuntimeError::InvalidBinaryOperator(operator.clone())),
+            _ => Err(RuntimeError::InvalidBinaryOperand(operator.clone())),
         }
     }
 
@@ -127,7 +127,7 @@ impl Expr {
     ) -> Result<LoxValue, RuntimeError> {
         match (left, right) {
             (LoxValue::Number(l), LoxValue::Number(r)) => Ok(LoxValue::Bool(l > r)),
-            _ => Err(RuntimeError::InvalidBinaryOperator(operator.clone())),
+            _ => Err(RuntimeError::InvalidBinaryOperand(operator.clone())),
         }
     }
     fn greater_equal(
@@ -137,13 +137,13 @@ impl Expr {
     ) -> Result<LoxValue, RuntimeError> {
         match (left, right) {
             (LoxValue::Number(l), LoxValue::Number(r)) => Ok(LoxValue::Bool(l >= r)),
-            _ => Err(RuntimeError::InvalidBinaryOperator(operator.clone())),
+            _ => Err(RuntimeError::InvalidBinaryOperand(operator.clone())),
         }
     }
     fn less(left: LoxValue, operator: &Token, right: LoxValue) -> Result<LoxValue, RuntimeError> {
         match (left, right) {
             (LoxValue::Number(l), LoxValue::Number(r)) => Ok(LoxValue::Bool(l < r)),
-            _ => Err(RuntimeError::InvalidBinaryOperator(operator.clone())),
+            _ => Err(RuntimeError::InvalidBinaryOperand(operator.clone())),
         }
     }
     fn less_equal(
@@ -153,7 +153,7 @@ impl Expr {
     ) -> Result<LoxValue, RuntimeError> {
         match (left, right) {
             (LoxValue::Number(l), LoxValue::Number(r)) => Ok(LoxValue::Bool(l <= r)),
-            _ => Err(RuntimeError::InvalidBinaryOperator(operator.clone())),
+            _ => Err(RuntimeError::InvalidBinaryOperand(operator.clone())),
         }
     }
 }
@@ -175,8 +175,7 @@ impl LoxValue {
 #[derive(Debug)]
 pub enum RuntimeError {
     InvalidArithmeticOperand(Token),
-    InvalidBinaryOperator(Token),
-    InvalidUnaryOperator(Token),
+    InvalidBinaryOperand(Token),
     InvalidUnaryOperand(Token),
     UnexpectedLiteralTokenType(Token),
 }
@@ -185,8 +184,7 @@ impl RuntimeError {
     pub fn to_err_msg(&self) -> String {
         let (warning, line) = match self {
             Self::InvalidArithmeticOperand(t) => ("Invalid arithmetic operand", t.line()),
-            Self::InvalidBinaryOperator(t) => ("Invalid binary operator", t.line()),
-            Self::InvalidUnaryOperator(t) => ("Invalid unary operator", t.line()),
+            Self::InvalidBinaryOperand(t) => ("Invalid binary operand", t.line()),
             Self::InvalidUnaryOperand(t) => ("Invalid unary operand", t.line()),
             Self::UnexpectedLiteralTokenType(t) => ("Unexpected literal token type", t.line()),
         };
