@@ -1,4 +1,4 @@
-use crate::ast::Expr;
+use crate::ast::{Expr, Stmt};
 use crate::scanner::token::Token;
 use crate::scanner::token_type::TokenType;
 use crate::Lox;
@@ -19,8 +19,19 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Expr, ParserError> {
-        self.expression()
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, ParserError> {
+        let mut stmts = Vec::new();
+        while self.peek().is_some() {
+            let stmt = self.statement();
+            match stmt {
+                Ok(stmt) => stmts.push(stmt),
+                Err(err) => {
+                    self.error(err.clone());
+                    return Err(err);
+                }
+            }
+        }
+        Ok(stmts)
     }
 
     fn synchronize(&mut self) {
@@ -48,6 +59,32 @@ impl<'a> Parser<'a> {
             }
 
             self.current += 1;
+        }
+    }
+
+    fn statement(&mut self) -> Result<Stmt, ParserError> {
+        if self.match_next(TokenType::Print) {
+            self.print_stmt()
+        } else {
+            self.expr_stmt()
+        }
+    }
+
+    fn print_stmt(&mut self) -> Result<Stmt, ParserError> {
+        let expr = self.expression()?;
+        if self.match_next(TokenType::Semicolon) {
+            Ok(Stmt::PrintStmt { expr: expr.into() })
+        } else {
+            Err(ParserError::ExpectSemicolon(self.current().to_owned()))
+        }
+    }
+
+    fn expr_stmt(&mut self) -> Result<Stmt, ParserError> {
+        let expr = self.expression()?;
+        if self.match_next(TokenType::Semicolon) {
+            Ok(Stmt::ExprStmt { expr: expr.into() })
+        } else {
+            Err(ParserError::ExpectSemicolon(self.current().to_owned()))
         }
     }
 
@@ -146,13 +183,14 @@ impl<'a> Parser<'a> {
                     expression: expr.into(),
                 })
             } else {
-                self.error(ParserError::ExpectRightParen(self.current().to_owned()))
+                Err(ParserError::ExpectRightParen(self.current().to_owned()))
             }
         } else {
-            self.error(ParserError::ExpectExpression(self.current().to_owned()))
+            Err(ParserError::ExpectExpression(self.current().to_owned()))
         }
     }
 
+    // TODO: consider an `expect_next` method, equivalent to `consume` in the book
     fn match_next(&mut self, expected_type: TokenType) -> bool {
         let matching = |t: &Token| match (t.token_type(), expected_type) {
             (TokenType::String(_), TokenType::String(_))
@@ -181,6 +219,7 @@ impl<'a> Parser<'a> {
         self.tokens.get(self.current).expect("current should exist")
     }
 
+    // TODO: refactor `self.peek().is_some()` to `self.is_eof()`
     /// Returns None if `self.current` is pointing at `TokenType::Eof`
     /// Panics if `self.current` is pointing past the end of `self.tokens`
     fn peek(&self) -> Option<&Token> {
@@ -197,7 +236,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn error(&mut self, err: ParserError) -> Result<Expr, ParserError> {
+    fn error(&mut self, err: ParserError) {
         match err.clone() {
             ParserError::ExpectExpression(t) => {
                 self.lox.error_with_token(t, "Expect expression");
@@ -205,8 +244,11 @@ impl<'a> Parser<'a> {
             ParserError::ExpectRightParen(t) => {
                 self.lox.error_with_token(t, "Expect ')' after expression");
             }
+            ParserError::ExpectSemicolon(t) => {
+                self.lox
+                    .error_with_token(t, "Expect ';' at the end of statement");
+            }
         }
-        Err(err)
     }
 }
 
@@ -214,4 +256,5 @@ impl<'a> Parser<'a> {
 pub enum ParserError {
     ExpectExpression(Token),
     ExpectRightParen(Token),
+    ExpectSemicolon(Token),
 }

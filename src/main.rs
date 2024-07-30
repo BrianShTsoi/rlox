@@ -87,17 +87,17 @@ impl Lox {
         let mut scanner = scanner::Scanner::new(self, source);
         let tokens = scanner.scan_tokens();
 
-        println!("SCANNED");
-        for t in &tokens {
-            println!("{:?}", t);
-        }
+        // println!("SCANNED");
+        // for t in &tokens {
+        //     println!("{:?}", t);
+        // }
 
         let mut parser = Parser::new(self, tokens);
-        let expr = parser.parse().ok();
-        if let Some(e) = expr {
-            println!("PARSED: {}", e);
+        let program = parser.parse().ok();
+        if let Some(program) = program {
+            // println!("PARSED: {:#?}", program);
             let mut interpreter = Interpreter::new(self);
-            interpreter.interpret(e);
+            interpreter.interpret(program);
         } else {
             println!("Cannot show parsed result or interpret due to error");
         }

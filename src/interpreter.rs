@@ -1,4 +1,6 @@
-use crate::ast::Expr;
+use std::fmt;
+
+use crate::ast::{Expr, Stmt};
 use crate::scanner::token::Token;
 use crate::scanner::token_type::TokenType;
 use crate::Lox;
@@ -7,18 +9,49 @@ pub struct Interpreter<'a> {
     lox: &'a mut Lox,
 }
 
+#[derive(Debug, PartialEq)]
+enum LoxValue {
+    Nil,
+    Bool(bool),
+    Number(f64),
+    String(String),
+}
+
+#[derive(Debug)]
+pub enum RuntimeError {
+    InvalidArithmeticOperand(Token),
+    InvalidBinaryOperand(Token),
+    InvalidUnaryOperand(Token),
+    UnexpectedLiteralTokenType(Token),
+}
+
 impl<'a> Interpreter<'a> {
     pub fn new(lox: &'a mut Lox) -> Self {
         Self { lox }
     }
 
-    pub fn interpret(&mut self, expr: Expr) {
-        match expr.evaluate() {
-            Ok(val) => {
-                println!("{:#?}", val);
+    pub fn interpret(&mut self, program: Vec<Stmt>) {
+        for stmt in program {
+            if let Err(err) = stmt.execute() {
+                self.lox.runtime_error(err);
             }
-            Err(err) => self.lox.runtime_error(err),
         }
+    }
+}
+
+impl Stmt {
+    fn execute(&self) -> Result<(), RuntimeError> {
+        match self {
+            Stmt::ExprStmt { expr } => {
+                let val = expr.evaluate()?;
+                println!("{val}");
+            }
+            Stmt::PrintStmt { expr } => {
+                let val = expr.evaluate()?;
+                println!("PRINT {val}");
+            }
+        }
+        Ok(())
     }
 }
 
@@ -158,26 +191,21 @@ impl Expr {
     }
 }
 
-#[derive(Debug, PartialEq)]
-enum LoxValue {
-    Nil,
-    Bool(bool),
-    Number(f64),
-    String(String),
-}
-
 impl LoxValue {
     fn truthiness(&self) -> bool {
         !matches!(self, Self::Nil) && !matches!(self, Self::Bool(false))
     }
 }
 
-#[derive(Debug)]
-pub enum RuntimeError {
-    InvalidArithmeticOperand(Token),
-    InvalidBinaryOperand(Token),
-    InvalidUnaryOperand(Token),
-    UnexpectedLiteralTokenType(Token),
+impl fmt::Display for LoxValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Nil => f.write_str("nil"),
+            Self::Bool(b) => write!(f, "{b}"),
+            Self::Number(n) => write!(f, "{n}"),
+            Self::String(s) => write!(f, "{s}"),
+        }
+    }
 }
 
 impl RuntimeError {

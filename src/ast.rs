@@ -2,6 +2,12 @@ use crate::scanner::token::Token;
 use std::fmt;
 
 #[derive(Debug)]
+pub enum Stmt {
+    ExprStmt { expr: Box<Expr> },
+    PrintStmt { expr: Box<Expr> },
+}
+
+#[derive(Debug)]
 pub enum Expr {
     Binary {
         left: Box<Expr>,
