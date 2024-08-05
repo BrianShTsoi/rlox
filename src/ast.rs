@@ -3,8 +3,16 @@ use std::fmt;
 
 #[derive(Debug)]
 pub enum Stmt {
-    ExprStmt { expr: Box<Expr> },
-    PrintStmt { expr: Box<Expr> },
+    ExprStmt {
+        expr: Box<Expr>,
+    },
+    PrintStmt {
+        expr: Box<Expr>,
+    },
+    VarStmt {
+        var_name: Token,
+        initializer: Option<Box<Expr>>,
+    },
 }
 
 #[derive(Debug)]
@@ -23,6 +31,9 @@ pub enum Expr {
     Unary {
         operator: Token,
         right: Box<Expr>,
+    },
+    Variable {
+        name: Token,
     },
 }
 
@@ -48,6 +59,9 @@ impl fmt::Display for Expr {
             }
             Self::Unary { operator, right } => {
                 write!(f, "\x1b[36m(\x1b[0m{} {}\x1b[36m)\x1b[0m", operator, right)
+            }
+            Self::Variable { name } => {
+                write!(f, "{}", name)
             }
         }
     }

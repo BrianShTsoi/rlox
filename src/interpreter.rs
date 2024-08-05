@@ -1,15 +1,20 @@
+use std::collections::HashMap;
 use std::fmt;
 
 use crate::ast::{Expr, Stmt};
 use crate::scanner::token::Token;
 use crate::scanner::token_type::TokenType;
-use crate::Lox;
 
-pub struct Interpreter<'a> {
-    lox: &'a mut Lox,
+pub struct Interpreter {
+    // lox: &'a mut Lox,
+    env: Environment,
 }
 
-#[derive(Debug, PartialEq)]
+pub struct Environment {
+    map: HashMap<String, LoxValue>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 enum LoxValue {
     Nil,
     Bool(bool),
@@ -22,19 +27,26 @@ pub enum RuntimeError {
     InvalidBinaryOperand(Token),
     InvalidUnaryOperand(Token),
     UnexpectedLiteralTokenType(Token),
+    UndefinedVariable(Token),
 }
 
-impl<'a> Interpreter<'a> {
-    pub fn new(lox: &'a mut Lox) -> Self {
-        Self { lox }
+impl Interpreter {
+    pub fn new() -> Self {
+        Self {
+            // lox,
+            env: Environment::new(),
+        }
     }
 
-    pub fn interpret(&mut self, program: Vec<Stmt>) {
+    pub fn interpret(&mut self, program: Vec<Stmt>) -> Result<(), Vec<RuntimeError>> {
+        let mut errors = Vec::new();
         for stmt in program {
             if let Err(err) = self.execute(&stmt) {
-                self.lox.runtime_error(err);
+                // self.lox.runtime_error(err);
+                errors.push(err);
             }
         }
+        errors.is_empty().then(|| ()).ok_or(errors)
     }
 
     fn execute(&mut self, stmt: &Stmt) -> Result<(), RuntimeError> {
@@ -46,6 +58,16 @@ impl<'a> Interpreter<'a> {
             Stmt::PrintStmt { expr } => {
                 let val = self.evaluate(expr)?;
                 println!("PRINT {val}");
+            }
+            Stmt::VarStmt {
+                var_name,
+                initializer,
+            } => {
+                let init_val = initializer
+                    .as_ref()
+                    .map(|i| self.evaluate(i))
+                    .unwrap_or(Ok(LoxValue::Nil))?;
+                self.env.define_var(&var_name.lexeme(), init_val);
             }
         }
         Ok(())
@@ -61,6 +83,7 @@ impl<'a> Interpreter<'a> {
             Expr::Grouping { expression } => self.evaluate(&expression),
             Expr::Literal { value } => self.evaluate_literal(value),
             Expr::Unary { operator, right } => self.evaluate_unary(operator, right),
+            Expr::Variable { name } => self.evaluate_var(name),
         };
         val
     }
@@ -89,7 +112,7 @@ impl<'a> Interpreter<'a> {
         result.map_err(|_| RuntimeError::InvalidBinaryOperand(operator.clone()))
     }
 
-    fn evaluate_literal(&mut self, token: &Token) -> Result<LoxValue, RuntimeError> {
+    fn evaluate_literal(&self, token: &Token) -> Result<LoxValue, RuntimeError> {
         match token.token_type() {
             TokenType::Nil => Ok(LoxValue::Nil),
             TokenType::True => Ok(LoxValue::Bool(true)),
@@ -113,6 +136,12 @@ impl<'a> Interpreter<'a> {
             }
             _ => Err(RuntimeError::InvalidBinaryOperand(operator.clone())),
         }
+    }
+
+    fn evaluate_var(&self, var: &Token) -> Result<LoxValue, RuntimeError> {
+        self.env
+            .get_var(&var.lexeme())
+            .ok_or(RuntimeError::UndefinedVariable(var.to_owned()))
     }
 
     fn plus(left: LoxValue, right: LoxValue) -> Result<LoxValue, ()> {
@@ -172,6 +201,22 @@ impl<'a> Interpreter<'a> {
     }
 }
 
+impl Environment {
+    fn new() -> Self {
+        Environment {
+            map: HashMap::new(),
+        }
+    }
+
+    fn define_var(&mut self, name: &str, val: LoxValue) {
+        self.map.insert(name.to_string(), val);
+    }
+
+    fn get_var(&self, name: &str) -> Option<LoxValue> {
+        self.map.get(name).cloned()
+    }
+}
+
 impl LoxValue {
     fn truthiness(&self) -> bool {
         !matches!(self, Self::Nil) && !matches!(self, Self::Bool(false))
@@ -195,6 +240,7 @@ impl RuntimeError {
             Self::InvalidBinaryOperand(t) => ("Invalid binary operand", t.line()),
             Self::InvalidUnaryOperand(t) => ("Invalid unary operand", t.line()),
             Self::UnexpectedLiteralTokenType(t) => ("Unexpected literal token type", t.line()),
+            Self::UndefinedVariable(t) => ("Undefined variable", t.line()),
         };
         format!("{}\n[line {}]", warning, line)
     }

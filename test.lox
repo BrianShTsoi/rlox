@@ -1,4 +1,7 @@
 // "hello" == "world" > 1234 < 7891234 > (((( 1 + (1234123 - "what" / true * false != nil)))))
-!(12345 + 23445 - 123408 * 8000 / 80.2345) != (0 > 38);
 print ("hello");
 
+var x = 32; 
+print x;
+print "hello" < "world";
+print x;

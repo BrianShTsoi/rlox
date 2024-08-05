@@ -19,23 +19,27 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Stmt>, ParserError> {
+    pub fn parse(&mut self) -> Vec<Stmt> {
         let mut stmts = Vec::new();
         while self.peek().is_some() {
-            let stmt = self.statement();
+            let stmt = self.declaration();
             match stmt {
                 Ok(stmt) => stmts.push(stmt),
                 Err(err) => {
-                    self.error(err.clone());
-                    return Err(err);
+                    self.error(err);
+                    self.synchronize();
                 }
             }
         }
-        Ok(stmts)
+        stmts
     }
 
     fn synchronize(&mut self) {
-        // TODO: modify later once this is actually used
+        // Edge case, might have better handling if we separate `peek` and `at_end`
+        if matches!(self.current().token_type(), TokenType::Eof) {
+            return;
+        }
+
         self.current += 1;
         while self.peek().is_some() {
             if matches!(self.previous().token_type(), TokenType::Semicolon) {
@@ -59,6 +63,35 @@ impl<'a> Parser<'a> {
             }
 
             self.current += 1;
+        }
+    }
+
+    fn declaration(&mut self) -> Result<Stmt, ParserError> {
+        if self.match_next(TokenType::Var) {
+            self.var_decl()
+        } else {
+            self.statement()
+        }
+    }
+
+    fn var_decl(&mut self) -> Result<Stmt, ParserError> {
+        if self.match_next(TokenType::Identifier) {
+            let var_name = self.previous().to_owned();
+            let initializer = if self.match_next(TokenType::Equal) {
+                Some(Box::new(self.expression()?))
+            } else {
+                None
+            };
+            if self.match_next(TokenType::Semicolon) {
+                Ok(Stmt::VarStmt {
+                    var_name,
+                    initializer,
+                })
+            } else {
+                Err(ParserError::ExpectSemicolon(self.current().to_owned()))
+            }
+        } else {
+            Err(ParserError::ExpectIdentifier(self.current().to_owned()))
         }
     }
 
@@ -176,6 +209,10 @@ impl<'a> Parser<'a> {
             Ok(Expr::Literal {
                 value: self.previous().to_owned(),
             })
+        } else if self.match_next(TokenType::Identifier) {
+            Ok(Expr::Variable {
+                name: self.previous().to_owned(),
+            })
         } else if self.match_next(TokenType::LeftParen) {
             let expr = self.expression()?;
             if self.match_next(TokenType::RightParen) {
@@ -239,14 +276,17 @@ impl<'a> Parser<'a> {
     fn error(&mut self, err: ParserError) {
         match err.clone() {
             ParserError::ExpectExpression(t) => {
-                self.lox.error_with_token(t, "Expect expression");
+                self.lox.syntax_error(t, "Expect expression");
             }
             ParserError::ExpectRightParen(t) => {
-                self.lox.error_with_token(t, "Expect ')' after expression");
+                self.lox.syntax_error(t, "Expect ')' after expression");
             }
             ParserError::ExpectSemicolon(t) => {
                 self.lox
-                    .error_with_token(t, "Expect ';' at the end of statement");
+                    .syntax_error(t, "Expect ';' at the end of statement");
+            }
+            ParserError::ExpectIdentifier(t) => {
+                self.lox.syntax_error(t, "Expect identifier after `var`");
             }
         }
     }
@@ -257,4 +297,5 @@ pub enum ParserError {
     ExpectExpression(Token),
     ExpectRightParen(Token),
     ExpectSemicolon(Token),
+    ExpectIdentifier(Token),
 }

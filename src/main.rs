@@ -16,9 +16,10 @@ pub mod parser;
 pub mod scanner;
 
 pub struct Lox {
-    // TODO: can implement an error emitter?
+    // TODO: can implement an error handler?
     had_error: bool,
     had_runtime_error: bool,
+    interpreter: Interpreter,
 }
 
 impl Lox {
@@ -26,6 +27,7 @@ impl Lox {
         Lox {
             had_error: false,
             had_runtime_error: false,
+            interpreter: Interpreter::new(),
         }
     }
 
@@ -50,8 +52,9 @@ impl Lox {
         file.read_to_string(&mut source)?;
         self.run(source);
 
-        // TODO: exit with code 64 if had_error
-        // TODO: exit with code 70 if had_runtime_error
+        // TODO:
+        // exit with code 64 if had_error
+        // exit with code 70 if had_runtime_error
         Ok(())
     }
 
@@ -93,21 +96,23 @@ impl Lox {
         // }
 
         let mut parser = Parser::new(self, tokens);
-        let program = parser.parse().ok();
-        if let Some(program) = program {
-            // println!("PARSED: {:#?}", program);
-            let mut interpreter = Interpreter::new(self);
-            interpreter.interpret(program);
-        } else {
-            println!("Cannot show parsed result or interpret due to error");
-        }
+        let program = parser.parse();
+        // println!("PARSED: {:#?}", program);
+        let result = self
+            .interpreter
+            .interpret(program)
+            .map_err(|errors| errors.into_iter().for_each(|e| self.runtime_error(e)))
+            .map_err(|_| self.had_runtime_error = true)
+            .ok();
     }
 
+    // TODO: Move all error reporting out of parser & scanner
+    // Maybe parser & scanner can return Result<(), Vec<Error>>
     fn error(&mut self, line: usize, message: &str) {
         self.report(line, "", message);
     }
 
-    fn error_with_token(&mut self, token: Token, message: &str) {
+    fn syntax_error(&mut self, token: Token, message: &str) {
         let position = match token.token_type() {
             TokenType::Eof => " at end".to_string(),
             _ => format!(" at '{}'", token.lexeme()),
