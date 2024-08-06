@@ -5,3 +5,6 @@ var x = 32;
 print x;
 print "hello" < "world";
 print x;
+
+x = 43;
+print x;

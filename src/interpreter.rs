@@ -67,7 +67,7 @@ impl Interpreter {
                     .as_ref()
                     .map(|i| self.evaluate(i))
                     .unwrap_or(Ok(LoxValue::Nil))?;
-                self.env.define_var(&var_name.lexeme(), init_val);
+                self.env.declare_var(&var_name.lexeme(), init_val);
             }
         }
         Ok(())
@@ -84,6 +84,10 @@ impl Interpreter {
             Expr::Literal { value } => self.evaluate_literal(value),
             Expr::Unary { operator, right } => self.evaluate_unary(operator, right),
             Expr::Variable { name } => self.evaluate_var(name),
+            Expr::Assignment { var_name, value } => {
+                let value = self.evaluate(value)?;
+                self.evaluate_assignment(var_name, value)
+            }
         };
         val
     }
@@ -141,7 +145,17 @@ impl Interpreter {
     fn evaluate_var(&self, var: &Token) -> Result<LoxValue, RuntimeError> {
         self.env
             .get_var(&var.lexeme())
-            .ok_or(RuntimeError::UndefinedVariable(var.to_owned()))
+            .map_err(|_| RuntimeError::UndefinedVariable(var.to_owned()))
+    }
+
+    fn evaluate_assignment(
+        &mut self,
+        var: &Token,
+        value: LoxValue,
+    ) -> Result<LoxValue, RuntimeError> {
+        self.env
+            .set_var(&var.lexeme(), value)
+            .map_err(|_| RuntimeError::UndefinedVariable(var.to_owned()))
     }
 
     fn plus(left: LoxValue, right: LoxValue) -> Result<LoxValue, ()> {
@@ -208,12 +222,21 @@ impl Environment {
         }
     }
 
-    fn define_var(&mut self, name: &str, val: LoxValue) {
+    fn declare_var(&mut self, name: &str, val: LoxValue) {
         self.map.insert(name.to_string(), val);
     }
 
-    fn get_var(&self, name: &str) -> Option<LoxValue> {
-        self.map.get(name).cloned()
+    fn get_var(&self, name: &str) -> Result<LoxValue, ()> {
+        self.map.get(name).cloned().ok_or(())
+    }
+
+    fn set_var(&mut self, name: &str, val: LoxValue) -> Result<LoxValue, ()> {
+        if self.map.contains_key(name) {
+            self.map.insert(name.to_string(), val.clone());
+            Ok(val)
+        } else {
+            Err(())
+        }
     }
 }
 

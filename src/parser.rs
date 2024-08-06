@@ -26,8 +26,10 @@ impl<'a> Parser<'a> {
             match stmt {
                 Ok(stmt) => stmts.push(stmt),
                 Err(err) => {
+                    if err.should_panic() {
+                        self.synchronize();
+                    }
                     self.error(err);
-                    self.synchronize();
                 }
             }
         }
@@ -122,7 +124,27 @@ impl<'a> Parser<'a> {
     }
 
     fn expression(&mut self) -> Result<Expr, ParserError> {
-        self.equality()
+        self.assignment()
+    }
+
+    fn assignment(&mut self) -> Result<Expr, ParserError> {
+        let mut expr = self.equality()?;
+        if self.match_next(TokenType::Equal) {
+            match expr {
+                Expr::Variable { name } => {
+                    let value = self.assignment()?;
+                    expr = Expr::Assignment {
+                        var_name: name,
+                        value: value.into(),
+                    };
+                }
+                _ => {
+                    let equals = self.previous().to_owned();
+                    return Err(ParserError::InvalidAssignmentTarget(equals));
+                }
+            }
+        }
+        Ok(expr)
     }
 
     fn equality(&mut self) -> Result<Expr, ParserError> {
@@ -274,7 +296,7 @@ impl<'a> Parser<'a> {
     }
 
     fn error(&mut self, err: ParserError) {
-        match err.clone() {
+        match err {
             ParserError::ExpectExpression(t) => {
                 self.lox.syntax_error(t, "Expect expression");
             }
@@ -288,6 +310,9 @@ impl<'a> Parser<'a> {
             ParserError::ExpectIdentifier(t) => {
                 self.lox.syntax_error(t, "Expect identifier after `var`");
             }
+            ParserError::InvalidAssignmentTarget(t) => {
+                self.lox.syntax_error(t, "Invalid assignment target");
+            }
         }
     }
 }
@@ -298,4 +323,17 @@ pub enum ParserError {
     ExpectRightParen(Token),
     ExpectSemicolon(Token),
     ExpectIdentifier(Token),
+    InvalidAssignmentTarget(Token),
+}
+
+impl ParserError {
+    fn should_panic(&self) -> bool {
+        matches!(
+            self,
+            Self::ExpectExpression(_)
+                | Self::ExpectRightParen(_)
+                | Self::ExpectSemicolon(_)
+                | Self::ExpectIdentifier(_)
+        )
+    }
 }

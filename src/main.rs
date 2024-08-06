@@ -82,6 +82,7 @@ impl Lox {
 
             self.run(line);
             self.had_error = false;
+            self.had_runtime_error = false;
         }
     }
 
@@ -98,8 +99,7 @@ impl Lox {
         let mut parser = Parser::new(self, tokens);
         let program = parser.parse();
         // println!("PARSED: {:#?}", program);
-        let result = self
-            .interpreter
+        self.interpreter
             .interpret(program)
             .map_err(|errors| errors.into_iter().for_each(|e| self.runtime_error(e)))
             .map_err(|_| self.had_runtime_error = true)

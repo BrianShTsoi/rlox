@@ -1,5 +1,5 @@
 use crate::scanner::token::Token;
-use std::fmt;
+// use std::fmt;
 
 #[derive(Debug)]
 pub enum Stmt {
@@ -35,34 +35,38 @@ pub enum Expr {
     Variable {
         name: Token,
     },
+    Assignment {
+        var_name: Token,
+        value: Box<Expr>,
+    },
 }
 
-impl fmt::Display for Expr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Binary {
-                left,
-                operator,
-                right,
-            } => {
-                write!(
-                    f,
-                    "\x1b[31m(\x1b[0m{} {} {}\x1b[31m)\x1b[0m",
-                    left, operator, right
-                )
-            }
-            Self::Grouping { expression } => {
-                write!(f, "\x1b[32m(\x1b[0m{}\x1b[32m)\x1b[0m", expression)
-            }
-            Self::Literal { value } => {
-                write!(f, "\x1b[34m(\x1b[0m{}\x1b[34m)\x1b[0m", value)
-            }
-            Self::Unary { operator, right } => {
-                write!(f, "\x1b[36m(\x1b[0m{} {}\x1b[36m)\x1b[0m", operator, right)
-            }
-            Self::Variable { name } => {
-                write!(f, "{}", name)
-            }
-        }
-    }
-}
+// impl fmt::Display for Expr {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         match self {
+//             Self::Binary {
+//                 left,
+//                 operator,
+//                 right,
+//             } => {
+//                 write!(
+//                     f,
+//                     "\x1b[31m(\x1b[0m{} {} {}\x1b[31m)\x1b[0m",
+//                     left, operator, right
+//                 )
+//             }
+//             Self::Grouping { expression } => {
+//                 write!(f, "\x1b[32m(\x1b[0m{}\x1b[32m)\x1b[0m", expression)
+//             }
+//             Self::Literal { value } => {
+//                 write!(f, "\x1b[34m(\x1b[0m{}\x1b[34m)\x1b[0m", value)
+//             }
+//             Self::Unary { operator, right } => {
+//                 write!(f, "\x1b[36m(\x1b[0m{} {}\x1b[36m)\x1b[0m", operator, right)
+//             }
+//             Self::Variable { name } => {
+//                 write!(f, "{}", name)
+//             }
+//         }
+//     }
+// }
