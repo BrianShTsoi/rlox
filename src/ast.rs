@@ -13,6 +13,9 @@ pub enum Stmt {
         var_name: Token,
         initializer: Option<Box<Expr>>,
     },
+    BlockStmt {
+        stmt_list: Vec<Stmt>,
+    },
 }
 
 #[derive(Debug)]

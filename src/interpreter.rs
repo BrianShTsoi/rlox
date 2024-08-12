@@ -7,10 +7,15 @@ use crate::scanner::token_type::TokenType;
 
 pub struct Interpreter {
     // lox: &'a mut Lox,
-    env: Environment,
+    env_list: EnvironmentList,
+    errors: Vec<RuntimeError>,
 }
 
-pub struct Environment {
+struct EnvironmentList {
+    env_list: Vec<Environment>,
+}
+
+struct Environment {
     map: HashMap<String, LoxValue>,
 }
 
@@ -22,7 +27,7 @@ enum LoxValue {
     String(String),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum RuntimeError {
     InvalidBinaryOperand(Token),
     InvalidUnaryOperand(Token),
@@ -34,19 +39,25 @@ impl Interpreter {
     pub fn new() -> Self {
         Self {
             // lox,
-            env: Environment::new(),
+            env_list: EnvironmentList::new(),
+            errors: Vec::new(),
         }
     }
 
     pub fn interpret(&mut self, program: Vec<Stmt>) -> Result<(), Vec<RuntimeError>> {
-        let mut errors = Vec::new();
         for stmt in program {
             if let Err(err) = self.execute(&stmt) {
                 // self.lox.runtime_error(err);
-                errors.push(err);
+                self.errors.push(err);
             }
         }
-        errors.is_empty().then(|| ()).ok_or(errors)
+
+        // TODO: Weird handling of errors
+        //       clone is unnecessary if Lox just access the field directly
+        self.errors
+            .is_empty()
+            .then(|| ())
+            .ok_or(self.errors.clone())
     }
 
     fn execute(&mut self, stmt: &Stmt) -> Result<(), RuntimeError> {
@@ -67,7 +78,18 @@ impl Interpreter {
                     .as_ref()
                     .map(|i| self.evaluate(i))
                     .unwrap_or(Ok(LoxValue::Nil))?;
-                self.env.declare_var(&var_name.lexeme(), init_val);
+                self.env_list.declare_var(&var_name.lexeme(), init_val);
+            }
+            Stmt::BlockStmt { stmt_list } => {
+                self.env_list.push_new_env();
+
+                for stmt in stmt_list {
+                    if let Err(err) = self.execute(&stmt) {
+                        self.errors.push(err);
+                    }
+                }
+
+                self.env_list.pop_env();
             }
         }
         Ok(())
@@ -143,7 +165,7 @@ impl Interpreter {
     }
 
     fn evaluate_var(&self, var: &Token) -> Result<LoxValue, RuntimeError> {
-        self.env
+        self.env_list
             .get_var(&var.lexeme())
             .map_err(|_| RuntimeError::UndefinedVariable(var.to_owned()))
     }
@@ -153,7 +175,7 @@ impl Interpreter {
         var: &Token,
         value: LoxValue,
     ) -> Result<LoxValue, RuntimeError> {
-        self.env
+        self.env_list
             .set_var(&var.lexeme(), value)
             .map_err(|_| RuntimeError::UndefinedVariable(var.to_owned()))
     }
@@ -212,6 +234,57 @@ impl Interpreter {
             (LoxValue::Number(l), LoxValue::Number(r)) => Ok(LoxValue::Bool(l <= r)),
             _ => Err(()),
         }
+    }
+}
+
+impl EnvironmentList {
+    fn new() -> Self {
+        Self {
+            env_list: vec![Environment::new()],
+        }
+    }
+
+    fn declare_var(&mut self, name: &str, val: LoxValue) {
+        self.last_env_mut().declare_var(name, val);
+    }
+
+    fn get_var(&self, name: &str) -> Result<LoxValue, ()> {
+        // TODO: do the for loop with the FP way
+        for env in self.env_list.iter().rev() {
+            let value = env.get_var(name);
+            if value.is_ok() {
+                return value;
+            }
+        }
+        return Err(());
+    }
+
+    fn set_var(&mut self, name: &str, val: LoxValue) -> Result<LoxValue, ()> {
+        // TODO: do the for loop with the FP way
+        for env in self.env_list.iter_mut().rev() {
+            let value = env.set_var(name, val.clone());
+            if value.is_ok() {
+                return value;
+            }
+        }
+        return Err(());
+        // self.last_env_mut().set_var(name, val)
+    }
+
+    fn push_new_env(&mut self) {
+        self.env_list.push(Environment::new());
+    }
+
+    fn pop_env(&mut self) {
+        self.env_list
+            .pop()
+            .expect("env_list should not be empty when popped");
+    }
+
+    fn last_env_mut(&mut self) -> &mut Environment {
+        self.env_list
+            .last_mut()
+            .expect("env_list should never be empty")
     }
 }
 

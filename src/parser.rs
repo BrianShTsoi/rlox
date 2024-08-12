@@ -22,8 +22,7 @@ impl<'a> Parser<'a> {
     pub fn parse(&mut self) -> Vec<Stmt> {
         let mut stmts = Vec::new();
         while self.peek().is_some() {
-            let stmt = self.declaration();
-            match stmt {
+            match self.declaration() {
                 Ok(stmt) => stmts.push(stmt),
                 Err(err) => {
                     if err.should_panic() {
@@ -100,6 +99,8 @@ impl<'a> Parser<'a> {
     fn statement(&mut self) -> Result<Stmt, ParserError> {
         if self.match_next(TokenType::Print) {
             self.print_stmt()
+        } else if self.match_next(TokenType::LeftBrace) {
+            self.block_stmt()
         } else {
             self.expr_stmt()
         }
@@ -111,6 +112,30 @@ impl<'a> Parser<'a> {
             Ok(Stmt::PrintStmt { expr: expr.into() })
         } else {
             Err(ParserError::ExpectSemicolon(self.current().to_owned()))
+        }
+    }
+
+    fn block_stmt(&mut self) -> Result<Stmt, ParserError> {
+        let mut stmt_list = Vec::new();
+        while self
+            .peek()
+            .is_some_and(|t| !matches!(t.token_type(), TokenType::RightBrace))
+        {
+            match self.declaration() {
+                Ok(stmt) => stmt_list.push(stmt),
+                Err(err) => {
+                    if err.should_panic() {
+                        self.synchronize();
+                    }
+                    self.error(err);
+                }
+            }
+        }
+
+        if self.match_next(TokenType::RightBrace) {
+            Ok(Stmt::BlockStmt { stmt_list })
+        } else {
+            Err(ParserError::ExpectRightBrace(self.current().to_owned()))
         }
     }
 
@@ -303,6 +328,9 @@ impl<'a> Parser<'a> {
             ParserError::ExpectRightParen(t) => {
                 self.lox.syntax_error(t, "Expect ')' after expression");
             }
+            ParserError::ExpectRightBrace(t) => {
+                self.lox.syntax_error(t, "Expect '}' after block");
+            }
             ParserError::ExpectSemicolon(t) => {
                 self.lox
                     .syntax_error(t, "Expect ';' at the end of statement");
@@ -321,6 +349,7 @@ impl<'a> Parser<'a> {
 pub enum ParserError {
     ExpectExpression(Token),
     ExpectRightParen(Token),
+    ExpectRightBrace(Token),
     ExpectSemicolon(Token),
     ExpectIdentifier(Token),
     InvalidAssignmentTarget(Token),
