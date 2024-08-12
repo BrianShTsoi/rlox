@@ -79,7 +79,7 @@ impl<'a> Parser<'a> {
         if self.match_next(TokenType::Identifier) {
             let var_name = self.previous().to_owned();
             let initializer = if self.match_next(TokenType::Equal) {
-                Some(Box::new(self.expression()?))
+                Some(self.expression()?)
             } else {
                 None
             };
