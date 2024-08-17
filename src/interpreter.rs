@@ -62,15 +62,15 @@ impl Interpreter {
 
     fn execute(&mut self, stmt: &Stmt) -> Result<(), RuntimeError> {
         match stmt {
-            Stmt::ExprStmt { expr } => {
+            Stmt::Expr { expr } => {
+                let val = self.evaluate(expr)?;
+                println!("expr = {val}");
+            }
+            Stmt::Print { expr } => {
                 let val = self.evaluate(expr)?;
                 println!("{val}");
             }
-            Stmt::PrintStmt { expr } => {
-                let val = self.evaluate(expr)?;
-                println!("PRINT {val}");
-            }
-            Stmt::VarStmt {
+            Stmt::VarDecl {
                 var_name,
                 initializer,
             } => {
@@ -80,7 +80,7 @@ impl Interpreter {
                     .unwrap_or(Ok(LoxValue::Nil))?;
                 self.env_list.declare_var(&var_name.lexeme(), init_val);
             }
-            Stmt::BlockStmt { stmt_list } => {
+            Stmt::Block { stmt_list } => {
                 self.env_list.push_new_env();
 
                 for stmt in stmt_list {

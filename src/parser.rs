@@ -84,7 +84,7 @@ impl<'a> Parser<'a> {
                 None
             };
             if self.match_next(TokenType::Semicolon) {
-                Ok(Stmt::VarStmt {
+                Ok(Stmt::VarDecl {
                     var_name,
                     initializer,
                 })
@@ -109,7 +109,7 @@ impl<'a> Parser<'a> {
     fn print_stmt(&mut self) -> Result<Stmt, ParserError> {
         let expr = self.expression()?;
         if self.match_next(TokenType::Semicolon) {
-            Ok(Stmt::PrintStmt { expr: expr.into() })
+            Ok(Stmt::Print { expr: expr.into() })
         } else {
             Err(ParserError::ExpectSemicolon(self.current().to_owned()))
         }
@@ -133,7 +133,7 @@ impl<'a> Parser<'a> {
         }
 
         if self.match_next(TokenType::RightBrace) {
-            Ok(Stmt::BlockStmt { stmt_list })
+            Ok(Stmt::Block { stmt_list })
         } else {
             Err(ParserError::ExpectRightBrace(self.current().to_owned()))
         }
@@ -142,7 +142,7 @@ impl<'a> Parser<'a> {
     fn expr_stmt(&mut self) -> Result<Stmt, ParserError> {
         let expr = self.expression()?;
         if self.match_next(TokenType::Semicolon) {
-            Ok(Stmt::ExprStmt { expr: expr.into() })
+            Ok(Stmt::Expr { expr: expr.into() })
         } else {
             Err(ParserError::ExpectSemicolon(self.current().to_owned()))
         }

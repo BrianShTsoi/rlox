@@ -3,17 +3,17 @@ use crate::scanner::token::Token;
 
 #[derive(Debug)]
 pub enum Stmt {
-    ExprStmt {
+    Expr {
         expr: Expr,
     },
-    PrintStmt {
+    Print {
         expr: Expr,
     },
-    VarStmt {
+    VarDecl {
         var_name: Token,
         initializer: Option<Expr>,
     },
-    BlockStmt {
+    Block {
         stmt_list: Vec<Stmt>,
     },
 }
