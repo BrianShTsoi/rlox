@@ -121,6 +121,11 @@ impl Interpreter {
                 let value = self.evaluate(value)?;
                 self.evaluate_assignment(var_name, value)
             }
+            Expr::Logical {
+                left,
+                operator,
+                right,
+            } => self.evaluate_logical(left, operator, right),
         };
         val
     }
@@ -189,6 +194,20 @@ impl Interpreter {
         self.env_list
             .set_var(&var.lexeme(), value)
             .map_err(|_| RuntimeError::UndefinedVariable(var.to_owned()))
+    }
+
+    fn evaluate_logical(
+        &mut self,
+        left: &Expr,
+        operator: &Token,
+        right: &Expr,
+    ) -> Result<LoxValue, RuntimeError> {
+        let left = self.evaluate(left)?;
+        match (operator.token_type(), left.truthiness()) {
+            (TokenType::And, false) => Ok(left),
+            (TokenType::Or, true) => Ok(left),
+            (_, _) => self.evaluate(right),
+        }
     }
 
     fn plus(left: LoxValue, right: LoxValue) -> Result<LoxValue, ()> {

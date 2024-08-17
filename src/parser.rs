@@ -171,7 +171,7 @@ impl<'a> Parser<'a> {
     }
 
     fn assignment(&mut self) -> Result<Expr, ParserError> {
-        let mut expr = self.equality()?;
+        let mut expr = self.or()?;
         if self.match_next(TokenType::Equal) {
             match expr {
                 Expr::Variable { name } => {
@@ -186,6 +186,34 @@ impl<'a> Parser<'a> {
                     return Err(ParserError::InvalidAssignmentTarget(equals));
                 }
             }
+        }
+        Ok(expr)
+    }
+
+    fn or(&mut self) -> Result<Expr, ParserError> {
+        let mut expr = self.and()?;
+        while self.match_next(TokenType::Or) {
+            let operator = self.previous().to_owned();
+            let right = self.and()?;
+            expr = Expr::Logical {
+                left: expr.into(),
+                operator,
+                right: right.into(),
+            };
+        }
+        Ok(expr)
+    }
+
+    fn and(&mut self) -> Result<Expr, ParserError> {
+        let mut expr = self.equality()?;
+        while self.match_next(TokenType::And) {
+            let operator = self.previous().to_owned();
+            let right = self.equality()?;
+            expr = Expr::Logical {
+                left: expr.into(),
+                operator,
+                right: right.into(),
+            };
         }
         Ok(expr)
     }

@@ -47,6 +47,11 @@ pub enum Expr {
         var_name: Token,
         value: Box<Expr>,
     },
+    Logical {
+        left: Box<Expr>,
+        operator: Token,
+        right: Box<Expr>,
+    },
 }
 
 // impl fmt::Display for Expr {
