@@ -16,6 +16,11 @@ pub enum Stmt {
     Block {
         stmt_list: Vec<Stmt>,
     },
+    If {
+        condition: Expr,
+        then_stmt: Box<Stmt>,
+        else_stmt: Option<Box<Stmt>>,
+    },
 }
 
 #[derive(Debug)]

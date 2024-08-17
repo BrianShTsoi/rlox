@@ -91,6 +91,17 @@ impl Interpreter {
 
                 self.env_list.pop_env();
             }
+            Stmt::If {
+                condition,
+                then_stmt,
+                else_stmt,
+            } => {
+                if self.evaluate(condition)?.truthiness() {
+                    self.execute(&then_stmt)?
+                } else if let Some(else_stmt) = else_stmt {
+                    self.execute(&else_stmt)?
+                }
+            }
         }
         Ok(())
     }

@@ -101,6 +101,8 @@ impl<'a> Parser<'a> {
             self.print_stmt()
         } else if self.match_next(TokenType::LeftBrace) {
             self.block_stmt()
+        } else if self.match_next(TokenType::If) {
+            self.if_stmt()
         } else {
             self.expr_stmt()
         }
@@ -146,6 +148,22 @@ impl<'a> Parser<'a> {
         } else {
             Err(ParserError::ExpectSemicolon(self.current().to_owned()))
         }
+    }
+
+    fn if_stmt(&mut self) -> Result<Stmt, ParserError> {
+        let condition = self.expression()?;
+        let then_stmt = Box::new(self.statement()?);
+        let else_stmt = if self.match_next(TokenType::Else) {
+            Some(Box::new(self.statement()?))
+        } else {
+            None
+        };
+
+        Ok(Stmt::If {
+            condition,
+            then_stmt,
+            else_stmt,
+        })
     }
 
     fn expression(&mut self) -> Result<Expr, ParserError> {
