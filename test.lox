@@ -1,6 +1,6 @@
-var a = "global a";
-var b = "global a";
-var c = "global a";
+// var a = "global a";
+// var b = "global a";
+// var c = "global a";
 // {
 // 	var a = "outer a";
 // 	var b = "outer b";
@@ -18,10 +18,17 @@ var c = "global a";
 // print b;
 // print c;
 
-if (a == b and a == c) {
-	print a == b and a == c;
-} else if (a == c) {
-	print "a == c!";
-} else {
-	print "a != b && a != c !!!!!";
+// if (a == b and a == c) {
+// 	print a == b and a == c;
+// } else if (a == c) {
+// 	print "a == c!";
+// } else {
+// 	print "a != b && a != c !!!!!";
+// }
+
+var i = 0;
+while (i < 10) {
+// while (i < 10) and (i > 0) {
+	print i;
+	i = i + 1;
 }

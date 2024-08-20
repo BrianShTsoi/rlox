@@ -97,6 +97,8 @@ impl<'a> Parser<'a> {
             self.block_stmt()
         } else if self.match_next(TokenType::If) {
             self.if_stmt()
+        } else if self.match_next(TokenType::While) {
+            self.while_stmt()
         } else {
             self.expr_stmt()
         }
@@ -149,6 +151,13 @@ impl<'a> Parser<'a> {
             then_stmt,
             else_stmt,
         })
+    }
+
+    fn while_stmt(&mut self) -> Result<Stmt, ParserError> {
+        let condition = self.expression()?;
+        let body = Box::new(self.statement()?);
+
+        Ok(Stmt::While { condition, body })
     }
 
     fn expression(&mut self) -> Result<Expr, ParserError> {

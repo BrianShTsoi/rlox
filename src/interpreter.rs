@@ -63,8 +63,9 @@ impl Interpreter {
     fn execute(&mut self, stmt: &Stmt) -> Result<(), RuntimeError> {
         match stmt {
             Stmt::Expr { expr } => {
-                let val = self.evaluate(expr)?;
-                println!("expr = {val}");
+                self.evaluate(expr)?;
+                // let val = self.evaluate(expr)?;
+                // println!("expr = {val}");
             }
             Stmt::Print { expr } => {
                 let val = self.evaluate(expr)?;
@@ -100,6 +101,11 @@ impl Interpreter {
                     self.execute(&then_stmt)?
                 } else if let Some(else_stmt) = else_stmt {
                     self.execute(&else_stmt)?
+                }
+            }
+            Stmt::While { condition, body } => {
+                while self.evaluate(condition)?.truthiness() {
+                    self.execute(&body)?
                 }
             }
         }
@@ -212,7 +218,7 @@ impl Interpreter {
 
     fn plus(left: LoxValue, right: LoxValue) -> Result<LoxValue, ()> {
         match (left, right) {
-            (LoxValue::Number(l), LoxValue::Number(r)) => Ok(LoxValue::Number(l - r)),
+            (LoxValue::Number(l), LoxValue::Number(r)) => Ok(LoxValue::Number(l + r)),
             (LoxValue::String(l), LoxValue::String(r)) => Ok(LoxValue::String(l + &r)),
             _ => Err(()),
         }
