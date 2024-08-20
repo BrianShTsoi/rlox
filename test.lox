@@ -19,9 +19,9 @@ var c = "global a";
 // print c;
 
 if (a == b and a == c) {
-	print a == b && a == c;
+	print a == b and a == c;
 } else if (a == c) {
-	print "a == c!"
+	print "a == c!";
 } else {
 	print "a != b && a != c !!!!!";
 }

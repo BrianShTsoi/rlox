@@ -76,24 +76,18 @@ impl<'a> Parser<'a> {
     }
 
     fn var_decl(&mut self) -> Result<Stmt, ParserError> {
-        if self.match_next(TokenType::Identifier) {
-            let var_name = self.previous().to_owned();
-            let initializer = if self.match_next(TokenType::Equal) {
-                Some(self.expression()?)
-            } else {
-                None
-            };
-            if self.match_next(TokenType::Semicolon) {
-                Ok(Stmt::VarDecl {
-                    var_name,
-                    initializer,
-                })
-            } else {
-                Err(ParserError::ExpectSemicolon(self.current().to_owned()))
-            }
+        self.expect_next(TokenType::Identifier)?;
+        let var_name = self.previous().to_owned();
+        let initializer = if self.match_next(TokenType::Equal) {
+            Some(self.expression()?)
         } else {
-            Err(ParserError::ExpectIdentifier(self.current().to_owned()))
-        }
+            None
+        };
+        self.expect_next(TokenType::Semicolon)?;
+        Ok(Stmt::VarDecl {
+            var_name,
+            initializer,
+        })
     }
 
     fn statement(&mut self) -> Result<Stmt, ParserError> {
@@ -110,11 +104,8 @@ impl<'a> Parser<'a> {
 
     fn print_stmt(&mut self) -> Result<Stmt, ParserError> {
         let expr = self.expression()?;
-        if self.match_next(TokenType::Semicolon) {
-            Ok(Stmt::Print { expr: expr.into() })
-        } else {
-            Err(ParserError::ExpectSemicolon(self.current().to_owned()))
-        }
+        self.expect_next(TokenType::Semicolon)?;
+        Ok(Stmt::Print { expr: expr.into() })
     }
 
     fn block_stmt(&mut self) -> Result<Stmt, ParserError> {
@@ -134,20 +125,14 @@ impl<'a> Parser<'a> {
             }
         }
 
-        if self.match_next(TokenType::RightBrace) {
-            Ok(Stmt::Block { stmt_list })
-        } else {
-            Err(ParserError::ExpectRightBrace(self.current().to_owned()))
-        }
+        self.expect_next(TokenType::RightBrace)?;
+        Ok(Stmt::Block { stmt_list })
     }
 
     fn expr_stmt(&mut self) -> Result<Stmt, ParserError> {
         let expr = self.expression()?;
-        if self.match_next(TokenType::Semicolon) {
-            Ok(Stmt::Expr { expr: expr.into() })
-        } else {
-            Err(ParserError::ExpectSemicolon(self.current().to_owned()))
-        }
+        self.expect_next(TokenType::Semicolon)?;
+        Ok(Stmt::Expr { expr: expr.into() })
     }
 
     fn if_stmt(&mut self) -> Result<Stmt, ParserError> {
@@ -308,13 +293,10 @@ impl<'a> Parser<'a> {
             })
         } else if self.match_next(TokenType::LeftParen) {
             let expr = self.expression()?;
-            if self.match_next(TokenType::RightParen) {
-                Ok(Expr::Grouping {
-                    expression: expr.into(),
-                })
-            } else {
-                Err(ParserError::ExpectRightParen(self.current().to_owned()))
-            }
+            self.expect_next(TokenType::RightParen)?;
+            Ok(Expr::Grouping {
+                expression: expr.into(),
+            })
         } else {
             Err(ParserError::ExpectExpression(self.current().to_owned()))
         }
@@ -333,6 +315,24 @@ impl<'a> Parser<'a> {
             true
         } else {
             false
+        }
+    }
+
+    /// Consumes and return Ok(()) if the next token matches the expected type,
+    /// Otherwise, return ParserError corresponding to the expected type
+    /// Panics if `expected_type` does not correspond to any `ParserError`
+    fn expect_next(&mut self, expected_type: TokenType) -> Result<(), ParserError> {
+        let err = match expected_type {
+            TokenType::RightParen => ParserError::ExpectRightParen(self.current().to_owned()),
+            TokenType::RightBrace => ParserError::ExpectRightBrace(self.current().to_owned()),
+            TokenType::Semicolon => ParserError::ExpectSemicolon(self.current().to_owned()),
+            TokenType::Identifier => ParserError::ExpectIdentifier(self.current().to_owned()),
+            _ => panic!("expected_type of expect_next does not correspond to any parser error"),
+        };
+        if self.match_next(expected_type) {
+            Ok(())
+        } else {
+            Err(err)
         }
     }
 
