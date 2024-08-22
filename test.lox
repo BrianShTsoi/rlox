@@ -28,7 +28,11 @@
 
 var i = 0;
 while (i < 10) {
-// while (i < 10) and (i > 0) {
 	print i;
 	i = i + 1;
+}
+
+for (var i = 0; i < 110; i = i + 1) {
+	print i;
+	print  "hello";
 }

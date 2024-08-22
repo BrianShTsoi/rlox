@@ -99,6 +99,8 @@ impl<'a> Parser<'a> {
             self.if_stmt()
         } else if self.match_next(TokenType::While) {
             self.while_stmt()
+        } else if self.match_next(TokenType::For) {
+            self.for_stmt()
         } else {
             self.expr_stmt()
         }
@@ -158,6 +160,67 @@ impl<'a> Parser<'a> {
         let body = Box::new(self.statement()?);
 
         Ok(Stmt::While { condition, body })
+    }
+
+    fn for_stmt(&mut self) -> Result<Stmt, ParserError> {
+        self.expect_next(TokenType::LeftParen)?;
+        let initializer = match self.current().token_type() {
+            TokenType::Semicolon => {
+                self.current += 1;
+                None
+            }
+            TokenType::Var => {
+                self.current += 1;
+                Some(self.var_decl()?)
+            }
+            _ => Some(self.expr_stmt()?),
+        };
+
+        let condition = match self.current().token_type() {
+            TokenType::Semicolon => Expr::Literal {
+                value: Token::new(TokenType::True, "true".to_string(), self.current().line()),
+            },
+            _ => self.expression()?,
+        };
+        self.expect_next(TokenType::Semicolon)?;
+
+        let increment = match self.current().token_type() {
+            TokenType::RightParen => None,
+            _ => Some(Stmt::Expr {
+                expr: self.expression()?,
+            }),
+        };
+        self.expect_next(TokenType::RightParen)?;
+
+        let body = self.statement()?;
+
+        Ok(Stmt::Block {
+            stmt_list: self.desugar_for_loop(initializer, condition, increment, body),
+        })
+    }
+
+    fn desugar_for_loop(
+        &self,
+        initializer: Option<Stmt>,
+        condition: Expr,
+        increment: Option<Stmt>,
+        body: Stmt,
+    ) -> Vec<Stmt> {
+        let mut stmt_list = Vec::new();
+        if let Some(initializer) = initializer {
+            stmt_list.push(initializer);
+        }
+        let while_stmt_list = std::iter::once(body)
+            .chain(increment.into_iter())
+            .collect::<Vec<_>>();
+        let while_stmt = Stmt::While {
+            condition,
+            body: Box::new(Stmt::Block {
+                stmt_list: while_stmt_list,
+            }),
+        };
+        stmt_list.push(while_stmt);
+        stmt_list
     }
 
     fn expression(&mut self) -> Result<Expr, ParserError> {
@@ -332,6 +395,7 @@ impl<'a> Parser<'a> {
     /// Panics if `expected_type` does not correspond to any `ParserError`
     fn expect_next(&mut self, expected_type: TokenType) -> Result<(), ParserError> {
         let err = match expected_type {
+            TokenType::LeftParen => ParserError::ExpectLeftParen(self.current().to_owned()),
             TokenType::RightParen => ParserError::ExpectRightParen(self.current().to_owned()),
             TokenType::RightBrace => ParserError::ExpectRightBrace(self.current().to_owned()),
             TokenType::Semicolon => ParserError::ExpectSemicolon(self.current().to_owned()),
@@ -380,18 +444,20 @@ impl<'a> Parser<'a> {
             ParserError::ExpectExpression(t) => {
                 self.lox.syntax_error(t, "Expect expression");
             }
+            ParserError::ExpectLeftParen(t) => {
+                self.lox.syntax_error(t, "Expect '('");
+            }
             ParserError::ExpectRightParen(t) => {
-                self.lox.syntax_error(t, "Expect ')' after expression");
+                self.lox.syntax_error(t, "Expect ')'");
             }
             ParserError::ExpectRightBrace(t) => {
-                self.lox.syntax_error(t, "Expect '}' after block");
+                self.lox.syntax_error(t, "Expect '}'");
             }
             ParserError::ExpectSemicolon(t) => {
-                self.lox
-                    .syntax_error(t, "Expect ';' at the end of statement");
+                self.lox.syntax_error(t, "Expect ';'");
             }
             ParserError::ExpectIdentifier(t) => {
-                self.lox.syntax_error(t, "Expect identifier after `var`");
+                self.lox.syntax_error(t, "Expect identifier");
             }
             ParserError::InvalidAssignmentTarget(t) => {
                 self.lox.syntax_error(t, "Invalid assignment target");
@@ -403,6 +469,7 @@ impl<'a> Parser<'a> {
 #[derive(Clone)]
 pub enum ParserError {
     ExpectExpression(Token),
+    ExpectLeftParen(Token),
     ExpectRightParen(Token),
     ExpectRightBrace(Token),
     ExpectSemicolon(Token),
